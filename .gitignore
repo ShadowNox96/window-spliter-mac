@@ -1,0 +1,18 @@
+# Xcode
+*.xcodeproj/
+*.xcworkspace/
+build/
+.DS_Store
+*.swiftpm/
+.swiftpm/
+
+# Generated files
+DerivedData/
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+*.xccheckout
+*.moved-aside
+*.xcbkptlist
+*.xcsettings
