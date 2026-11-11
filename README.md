@@ -81,8 +81,8 @@ Los atajos se guardan en `UserDefaults`, así que se conservan al reiniciar.
 ### 1. Clonar y generar el proyecto
 
 ```bash
-git clone https://github.com/ShadowNox96/window-splite-mac.git
-cd window-splite-mac
+git clone https://github.com/ShadowNox96/window-spliter-mac.git
+cd window-spliter-mac
 xcodegen generate
 ```
 
