@@ -2,6 +2,17 @@
 **Date:** 2026-05-30
 **Status:** Approved
 
+**Superseded behavior (2026-10-07):** The approved
+[correction design](../../specs/2026-10-07-window-splitter-corrections-design.md)
+and [correction plan](../../plans/2026-10-07-window-splitter-corrections.md)
+take precedence over this historical document. Keep saved bindings and macOS 13.
+AppDelegate now owns a native NSStatusItem and reusable nonactivating NSPanel;
+SwiftUI hosts the content. Recording is exclusive, suspends window actions and
+cancels on Escape, focus loss, hide or close. New proposals require Control,
+Option or Command and reject duplicates and reserved Option+Shift+Space.
+Permission monitoring continues through revocation; listener/AX/validation errors
+are visible. Accessibility settings open directly without a TCC prompt.
+
 ---
 
 ## Overview
@@ -17,7 +28,7 @@ Three distinct layers:
 ```
 ┌─────────────────────────────────────┐
 │           UI Layer (SwiftUI)        │
-│  MenuBarExtra + ConfigPanel         │
+│  NSStatusItem + NSPanel / SwiftUI   │
 ├─────────────────────────────────────┤
 │         Shortcut Engine             │
 │  GlobalHotkeyManager (CGEventTap)   │
@@ -29,7 +40,7 @@ Three distinct layers:
 
 ### Components
 
-- **MenuBarExtra** — Menu bar icon. Click opens the ConfigPanel.
+- **NSStatusItem** — Owned by AppDelegate. Click and Option+Shift+Space toggle the same ConfigPanel.
 - **GlobalHotkeyManager** — Registers global shortcuts via `CGEventTap`. Listens even when the app is not focused. Fires the appropriate window action when a shortcut is detected.
 - **WindowController** — Uses `AXUIElement` (Accessibility API) to get the currently focused window and apply a layout frame calculated from the active screen bounds.
 - **ConfigPanel** — `NSPanel` floating window built in SwiftUI. Lists all actions with their current shortcut (clickable to record a new one) and a toggle to enable/disable each action individually.
@@ -43,10 +54,10 @@ All defaults use `⌥⇧` (Option + Shift) as the modifier base.
 
 | Action | Default Shortcut |
 |---|---|
-| Left half | `⌥⇧ ←` |
-| Right half | `⌥⇧ →` |
-| Top half | `⌥⇧ ↑` |
-| Bottom half | `⌥⇧ ↓` |
+| Left half | `⌥⇧ A` |
+| Right half | `⌥⇧ D` |
+| Top half | `⌥⇧ W` |
+| Bottom half | `⌥⇧ S` |
 | Left third | `⌥⇧ 1` |
 | Center third | `⌥⇧ 2` |
 | Right third | `⌥⇧ 3` |
@@ -68,10 +79,10 @@ Opens on menu bar icon click or via the global shortcut `⌥⇧ Space`.
 ┌─────────────────────────────────┐
 │  🪟 WindowSplitter          [×] │
 ├─────────────────────────────────┤
-│  Left half          [⌥⇧←]  [●] │
-│  Right half         [⌥⇧→]  [●] │
-│  Top half           [⌥⇧↑]  [●] │
-│  Bottom half        [⌥⇧↓]  [●] │
+│  Left half          [⌥⇧A]  [●] │
+│  Right half         [⌥⇧D]  [●] │
+│  Top half           [⌥⇧W]  [●] │
+│  Bottom half        [⌥⇧S]  [●] │
 │  ─────────────────────────────  │
 │  Left third         [⌥⇧1]  [●] │
 │  Center third       [⌥⇧2]  [●] │
@@ -88,7 +99,7 @@ Opens on menu bar icon click or via the global shortcut `⌥⇧ Space`.
 └─────────────────────────────────┘
 ```
 
-- **Shortcut button** `[⌥⇧←]` — click to record a new binding. The button enters "recording" state, captures the next key combination pressed, and saves it.
+- **Shortcut button** `[⌥⇧A]` — click to record one valid combination, preserving the current enabled state. Escape cancels; invalid combinations show an error without overwriting settings.
 - **Toggle** `[●]` — enables or disables that specific action. Disabled actions are not registered as global shortcuts.
 - **Accessibility banner** — shown at the bottom when `AXIsProcessTrusted()` returns false. The "Enable" button opens `System Settings → Privacy & Security → Accessibility` directly. All shortcuts remain inactive until permission is granted.
 
@@ -109,7 +120,7 @@ On app launch, `SettingsStore` loads saved config and `GlobalHotkeyManager` regi
 
 - On first launch, `AXIsProcessTrusted()` is checked.
 - If not granted: banner shown in ConfigPanel, shortcuts disabled, button to open System Settings.
-- A `Timer` polls `AXIsProcessTrusted()` every second while permission is not granted. Once it returns `true`, shortcuts are registered and the timer stops. No app restart required.
+- A `Timer` polls `AXIsProcessTrusted()` every second until shutdown, observing both grants and revocations and retrying listener failures with current bindings. No app restart required.
 
 ---
 

@@ -1,5 +1,14 @@
 # WindowSplitter Implementation Plan
 
+> Historical plan. The approved [2026-10-07 correction design](../../specs/2026-10-07-window-splitter-corrections-design.md)
+> and [T1-T3 correction plan](../../plans/2026-10-07-window-splitter-corrections.md)
+> supersede contradictory snippets below, including geometry, event ownership,
+> permission monitoring, recording and private MenuBarExtra introspection.
+> The entry point is native NSApplication; AppDelegate owns NSStatusItem/NSPanel.
+> Keep macOS 13 and persisted bindings. Half defaults are Option+Shift+A/D/W/S.
+> This document is retained as historical context, not an executable current plan.
+> Manual TCC/cross-app/hardware checks below have NOT been performed by T3.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build a macOS menu bar app in Swift that repositions the focused window via global keyboard shortcuts, with a floating panel to configure and toggle each shortcut.
@@ -298,10 +307,10 @@ enum WindowAction: String, CaseIterable, Identifiable {
     // Virtual key codes (Carbon / CGKeyCode)
     var defaultKeyCode: Int {
         switch self {
-        case .leftHalf:           return 123 // Left arrow
-        case .rightHalf:          return 124 // Right arrow
-        case .topHalf:            return 126 // Up arrow
-        case .bottomHalf:         return 125 // Down arrow
+        case .leftHalf:           return 0   // A
+        case .rightHalf:          return 2   // D
+        case .topHalf:            return 13  // W
+        case .bottomHalf:         return 1   // S
         case .leftThird:          return 18  // 1
         case .centerThird:        return 19  // 2
         case .rightThird:         return 20  // 3
@@ -1106,13 +1115,13 @@ After granting Accessibility without restarting the app, the banner should disap
 
 - [ ] **Step 4: Test shortcuts**
 
-Focus any window (e.g., Finder). Press `⌥⇧ ←`. The window should snap to the left half of the screen.
+Focus any window (e.g., Finder). Press `⌥⇧ A`. The window should snap to the left half of the screen.
 
 Test all 12 shortcuts:
-- `⌥⇧←` → left half
-- `⌥⇧→` → right half
-- `⌥⇧↑` → top half
-- `⌥⇧↓` → bottom half
+- `⌥⇧A` → left half
+- `⌥⇧D` → right half
+- `⌥⇧W` → top half
+- `⌥⇧S` → bottom half
 - `⌥⇧1` → left third
 - `⌥⇧2` → center third
 - `⌥⇧3` → right third
