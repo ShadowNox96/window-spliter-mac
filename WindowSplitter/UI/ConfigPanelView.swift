@@ -2,8 +2,15 @@ import SwiftUI
 
 struct ConfigPanelView: View {
     @ObservedObject var store: SettingsStore
-    let hotkeyManager: GlobalHotkeyManager
-    @State private var hasAccessibility = AXIsProcessTrusted()
+    @ObservedObject var hotkeyManager: GlobalHotkeyManager
+    @ObservedObject var appDelegate: AppDelegate
+    @State private var shortcutError: String?
+
+    init(appDelegate: AppDelegate) {
+        self.appDelegate = appDelegate
+        self.store = appDelegate.store
+        self.hotkeyManager = appDelegate.hotkeyManager
+    }
 
     private let halves: [WindowAction] = [.leftHalf, .rightHalf, .topHalf, .bottomHalf]
     private let thirds: [WindowAction] = [.leftThird, .centerThird, .rightThird]
@@ -37,13 +44,28 @@ struct ConfigPanelView: View {
                 .padding(.vertical, 8)
             }
 
-            if !hasAccessibility {
+            if let shortcutError {
+                Text(shortcutError).foregroundColor(.red).font(.caption).padding(12)
+            }
+            if let error = hotkeyManager.listenerError {
+                Text(error).foregroundColor(.red).font(.caption).padding(12)
+                Button("Retry Listener") { hotkeyManager.refreshPermission() }.padding(.horizontal, 12)
+            }
+            if let error = hotkeyManager.actionError {
+                Text(error).foregroundColor(.red).font(.caption).padding(12)
+            }
+            if !hotkeyManager.hasAccessibility {
                 Divider()
                 accessibilityBanner
             }
+            Divider()
+            HStack {
+                Text("Option+Shift+Space: toggle panel").font(.caption)
+                Spacer()
+                Button("Quit") { NSApplication.shared.terminate(nil) }
+            }.padding(12)
         }
         .frame(width: 340)
-        .onAppear { checkAccessibility() }
     }
 
     private func actionGroup(actions: [WindowAction]) -> some View {
@@ -53,12 +75,24 @@ struct ConfigPanelView: View {
                 binding: Binding(
                     get: { store.bindings[action]! },
                     set: { newBinding in
-                        store.save(action: action, binding: newBinding)
-                        hotkeyManager.update(bindings: store.enabledBindings)
+                        save(newBinding, for: action)
                     }
-                )
+                ),
+                isRecording: Binding(
+                    get: { appDelegate.recordingAction == action },
+                    set: { active in
+                        if active { appDelegate.recordingAction = action }
+                        else if appDelegate.recordingAction == action { appDelegate.recordingAction = nil }
+                    }
+                ),
+                onRecord: { save($0, for: action, recording: true) }
             )
         }
+    }
+
+    private func save(_ binding: ShortcutBinding, for action: WindowAction, recording: Bool = false) {
+        shortcutError = store.save(action: action, binding: binding, recording: recording)
+        if shortcutError == nil { hotkeyManager.update(bindings: store.enabledBindings) }
     }
 
     private var accessibilityBanner: some View {
@@ -68,10 +102,8 @@ struct ConfigPanelView: View {
             Text("Accessibility access required")
                 .font(.caption)
             Spacer()
-            Button("Enable") {
-                NSWorkspace.shared.open(
-                    URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!
-                )
+            Button("Open Settings") {
+                NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.small)
@@ -79,12 +111,5 @@ struct ConfigPanelView: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
         .background(Color.yellow.opacity(0.1))
-    }
-
-    private func checkAccessibility() {
-        hasAccessibility = AXIsProcessTrusted()
-        hotkeyManager.onPermissionGranted = {
-            hasAccessibility = true
-        }
     }
 }

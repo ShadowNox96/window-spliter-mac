@@ -1,13 +1,13 @@
 import SwiftUI
 import AppKit
+import Carbon
 
 /// A button that displays the current shortcut. When clicked, enters recording mode
 /// and captures the next key press + modifiers, then calls `onRecord`.
 struct ShortcutRecorderButton: View {
     let binding: ShortcutBinding
+    @Binding var isRecording: Bool
     let onRecord: (ShortcutBinding) -> Void
-
-    @State private var isRecording = false
 
     var body: some View {
         Button(action: { isRecording = true }) {
@@ -17,7 +17,7 @@ struct ShortcutRecorderButton: View {
         }
         .buttonStyle(.bordered)
         .foregroundColor(isRecording ? .accentColor : .primary)
-        .background(KeyRecorderOverlay(isActive: isRecording) { keyCode, modifiers in
+        .background(KeyRecorderOverlay(isActive: isRecording, onCancel: { isRecording = false }) { keyCode, modifiers in
             isRecording = false
             let updated = ShortcutBinding(keyCode: keyCode, modifiers: modifiers, enabled: binding.enabled)
             onRecord(updated)
@@ -37,6 +37,10 @@ struct ShortcutRecorderButton: View {
 
     private func keyName(for keyCode: Int) -> String {
         switch keyCode {
+        case 0:   return "A"
+        case 1:   return "S"
+        case 2:   return "D"
+        case 13:  return "W"
         case 123: return "←"
         case 124: return "→"
         case 125: return "↓"
@@ -58,8 +62,9 @@ struct ShortcutRecorderButton: View {
 
 // MARK: - Key recorder overlay (NSView bridged into SwiftUI)
 
-private struct KeyRecorderOverlay: NSViewRepresentable {
+struct KeyRecorderOverlay: NSViewRepresentable {
     let isActive: Bool
+    var onCancel: () -> Void = {}
     let onCapture: (Int, Int) -> Void
 
     func makeNSView(context: Context) -> KeyCaptureView {
@@ -67,14 +72,25 @@ private struct KeyRecorderOverlay: NSViewRepresentable {
     }
 
     func updateNSView(_ nsView: KeyCaptureView, context: Context) {
+        nsView.onCapture = onCapture
+        nsView.onCancel = onCancel
+        nsView.isActive = isActive
         if isActive {
             nsView.window?.makeFirstResponder(nsView)
+        } else if nsView.window?.firstResponder === nsView {
+            nsView.window?.makeFirstResponder(nil)
         }
+    }
+
+    static func dismantleNSView(_ nsView: KeyCaptureView, coordinator: ()) {
+        nsView.cancel()
     }
 }
 
 final class KeyCaptureView: NSView {
-    let onCapture: (Int, Int) -> Void
+    var onCapture: (Int, Int) -> Void
+    var onCancel: () -> Void = {}
+    var isActive = false
 
     init(onCapture: @escaping (Int, Int) -> Void) {
         self.onCapture = onCapture
@@ -83,11 +99,33 @@ final class KeyCaptureView: NSView {
 
     required init?(coder: NSCoder) { fatalError() }
 
-    override var acceptsFirstResponder: Bool { true }
+    override var acceptsFirstResponder: Bool { isActive }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        if isActive { window?.makeFirstResponder(self) }
+    }
 
     override func keyDown(with event: NSEvent) {
-        let modifiers = Int(event.modifierFlags.rawValue & NSEvent.ModifierFlags.deviceIndependentFlagsMask.rawValue)
+        guard isActive else { return }
+        guard event.keyCode != 53 else { cancel(); return }
+        isActive = false
+        if window?.firstResponder === self { window?.makeFirstResponder(nil) }
+        let modifiers = Int(event.modifierFlags.intersection([.control, .option, .shift, .command]).rawValue)
         onCapture(Int(event.keyCode), modifiers)
+    }
+
+    override func resignFirstResponder() -> Bool {
+        let resigned = super.resignFirstResponder()
+        if resigned { cancel() }
+        return resigned
+    }
+
+    func cancel() {
+        guard isActive else { return }
+        isActive = false
+        if window?.firstResponder === self { window?.makeFirstResponder(nil) }
+        onCancel()
     }
 }
 

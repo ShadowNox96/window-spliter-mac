@@ -36,10 +36,10 @@ enum WindowAction: String, CaseIterable, Identifiable {
     // Virtual key codes (Carbon / CGKeyCode)
     var defaultKeyCode: Int {
         switch self {
-        case .leftHalf:           return 123 // Left arrow
-        case .rightHalf:          return 124 // Right arrow
-        case .topHalf:            return 126 // Up arrow
-        case .bottomHalf:         return 125 // Down arrow
+        case .leftHalf:           return 0   // A
+        case .rightHalf:          return 2   // D
+        case .topHalf:            return 13  // W
+        case .bottomHalf:         return 1   // S
         case .leftThird:          return 18  // 1
         case .centerThird:        return 19  // 2
         case .rightThird:         return 20  // 3
@@ -64,15 +64,15 @@ enum WindowAction: String, CaseIterable, Identifiable {
         switch self {
         case .leftHalf:           return CGRect(x: x,           y: y,           width: w / 2,   height: h)
         case .rightHalf:          return CGRect(x: x + w / 2,   y: y,           width: w / 2,   height: h)
-        case .topHalf:            return CGRect(x: x,           y: y,           width: w,       height: h / 2)
-        case .bottomHalf:         return CGRect(x: x,           y: y + h / 2,   width: w,       height: h / 2)
+        case .topHalf:            return CGRect(x: x,           y: y + h / 2,   width: w,       height: h / 2)
+        case .bottomHalf:         return CGRect(x: x,           y: y,           width: w,       height: h / 2)
         case .leftThird:          return CGRect(x: x,           y: y,           width: w / 3,   height: h)
         case .centerThird:        return CGRect(x: x + w / 3,   y: y,           width: w / 3,   height: h)
         case .rightThird:         return CGRect(x: x + 2 * w / 3, y: y,         width: w / 3,   height: h)
-        case .topLeftQuarter:     return CGRect(x: x,           y: y,           width: w / 2,   height: h / 2)
-        case .topRightQuarter:    return CGRect(x: x + w / 2,   y: y,           width: w / 2,   height: h / 2)
-        case .bottomLeftQuarter:  return CGRect(x: x,           y: y + h / 2,   width: w / 2,   height: h / 2)
-        case .bottomRightQuarter: return CGRect(x: x + w / 2,   y: y + h / 2,   width: w / 2,   height: h / 2)
+        case .topLeftQuarter:     return CGRect(x: x,           y: y + h / 2,   width: w / 2,   height: h / 2)
+        case .topRightQuarter:    return CGRect(x: x + w / 2,   y: y + h / 2,   width: w / 2,   height: h / 2)
+        case .bottomLeftQuarter:  return CGRect(x: x,           y: y,           width: w / 2,   height: h / 2)
+        case .bottomRightQuarter: return CGRect(x: x + w / 2,   y: y,           width: w / 2,   height: h / 2)
         case .fullscreen:         return CGRect(x: x,           y: y,           width: w,       height: h)
         }
     }

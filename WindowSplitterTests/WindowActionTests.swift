@@ -16,12 +16,12 @@ final class WindowActionTests: XCTestCase {
 
     func test_topHalf_frame() {
         let frame = WindowAction.topHalf.frame(in: screen)
-        XCTAssertEqual(frame, CGRect(x: 0, y: 0, width: 1920, height: 540))
+        XCTAssertEqual(frame, CGRect(x: 0, y: 540, width: 1920, height: 540))
     }
 
     func test_bottomHalf_frame() {
         let frame = WindowAction.bottomHalf.frame(in: screen)
-        XCTAssertEqual(frame, CGRect(x: 0, y: 540, width: 1920, height: 540))
+        XCTAssertEqual(frame, CGRect(x: 0, y: 0, width: 1920, height: 540))
     }
 
     func test_leftThird_frame() {
@@ -41,22 +41,22 @@ final class WindowActionTests: XCTestCase {
 
     func test_topLeftQuarter_frame() {
         let frame = WindowAction.topLeftQuarter.frame(in: screen)
-        XCTAssertEqual(frame, CGRect(x: 0, y: 0, width: 960, height: 540))
+        XCTAssertEqual(frame, CGRect(x: 0, y: 540, width: 960, height: 540))
     }
 
     func test_topRightQuarter_frame() {
         let frame = WindowAction.topRightQuarter.frame(in: screen)
-        XCTAssertEqual(frame, CGRect(x: 960, y: 0, width: 960, height: 540))
+        XCTAssertEqual(frame, CGRect(x: 960, y: 540, width: 960, height: 540))
     }
 
     func test_bottomLeftQuarter_frame() {
         let frame = WindowAction.bottomLeftQuarter.frame(in: screen)
-        XCTAssertEqual(frame, CGRect(x: 0, y: 540, width: 960, height: 540))
+        XCTAssertEqual(frame, CGRect(x: 0, y: 0, width: 960, height: 540))
     }
 
     func test_bottomRightQuarter_frame() {
         let frame = WindowAction.bottomRightQuarter.frame(in: screen)
-        XCTAssertEqual(frame, CGRect(x: 960, y: 540, width: 960, height: 540))
+        XCTAssertEqual(frame, CGRect(x: 960, y: 0, width: 960, height: 540))
     }
 
     func test_fullscreen_frame() {
@@ -66,8 +66,32 @@ final class WindowActionTests: XCTestCase {
 
     func test_allCasesHaveDefaultKeyCode() {
         for action in WindowAction.allCases {
-            XCTAssertGreaterThan(action.defaultKeyCode, 0, "\(action) has invalid keyCode")
+            XCTAssertGreaterThanOrEqual(action.defaultKeyCode, 0, "\(action) has invalid keyCode")
+            XCTAssertLessThanOrEqual(action.defaultKeyCode, 127, "\(action) has invalid keyCode")
         }
+    }
+
+    func test_halfDefaultsRemainWASD() {
+        XCTAssertEqual(WindowAction.leftHalf.defaultKeyCode, 0)
+        XCTAssertEqual(WindowAction.rightHalf.defaultKeyCode, 2)
+        XCTAssertEqual(WindowAction.topHalf.defaultKeyCode, 13)
+        XCTAssertEqual(WindowAction.bottomHalf.defaultKeyCode, 1)
+    }
+
+    func test_verticalLayoutsRespectVisibleFrameOrigin() {
+        let visibleFrame = CGRect(x: -1280, y: 1103, width: 1280, height: 720)
+        let expected: [(WindowAction, CGRect)] = [
+            (.topHalf, CGRect(x: -1280, y: 1463, width: 1280, height: 360)),
+            (.bottomHalf, CGRect(x: -1280, y: 1103, width: 1280, height: 360)),
+            (.topLeftQuarter, CGRect(x: -1280, y: 1463, width: 640, height: 360)),
+            (.topRightQuarter, CGRect(x: -640, y: 1463, width: 640, height: 360)),
+            (.bottomLeftQuarter, CGRect(x: -1280, y: 1103, width: 640, height: 360)),
+            (.bottomRightQuarter, CGRect(x: -640, y: 1103, width: 640, height: 360))
+        ]
+        for (action, frame) in expected {
+            XCTAssertEqual(action.frame(in: visibleFrame), frame, action.rawValue)
+        }
+        XCTAssertEqual(WindowAction.fullscreen.frame(in: visibleFrame), visibleFrame)
     }
 
     func test_defaultModifiersAreOptionShift() {

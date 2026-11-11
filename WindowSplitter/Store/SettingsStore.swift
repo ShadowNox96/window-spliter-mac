@@ -1,4 +1,4 @@
-import Foundation
+import AppKit
 import Combine
 
 struct ShortcutBinding {
@@ -22,11 +22,32 @@ final class SettingsStore: ObservableObject {
         }
     }
 
-    func save(action: WindowAction, binding: ShortcutBinding) {
+    @discardableResult
+    /// Toggles preserve legacy chords; recording always validates, even an unchanged chord.
+    func save(action: WindowAction, binding proposal: ShortcutBinding, recording: Bool = false) -> String? {
+        var binding = proposal
+        if let current = bindings[action],
+           recording || current.keyCode != binding.keyCode || current.modifiers != binding.modifiers {
+            let mask = Int(NSEvent.ModifierFlags([.control, .option, .command, .shift]).rawValue)
+            binding.modifiers &= mask
+            guard binding.modifiers & Int(NSEvent.ModifierFlags([.control, .option, .command]).rawValue) != 0 else {
+                return "Use Control, Option or Command in a new shortcut."
+            }
+            guard binding.keyCode != 49 || binding.modifiers != Int(NSEvent.ModifierFlags([.option, .shift]).rawValue) else {
+                return "Option+Shift+Space is reserved for the panel."
+            }
+            guard !bindings.contains(where: { other, saved in
+                other != action && saved.keyCode == binding.keyCode && saved.modifiers & mask == binding.modifiers
+            }) else {
+                return "That shortcut is already assigned to another action."
+            }
+            binding.enabled = current.enabled
+        }
         bindings[action] = binding
         defaults.set(binding.keyCode, forKey: keyCodeKey(action))
         defaults.set(binding.modifiers, forKey: modifiersKey(action))
         defaults.set(binding.enabled, forKey: enabledKey(action))
+        return nil
     }
 
     var enabledBindings: [WindowAction: ShortcutBinding] {
